@@ -35,7 +35,7 @@ class TextFormat:
     Token = collections.namedtuple('Token', 'token type position')
     Tokenized = collections.namedtuple('Tokenized', 'tokens types decimal thousands percents')
 
-    FORMAT_MISC = set("$+(:^\'{<=-/)!&~}> ")
+    FORMAT_MISC = set("$+(:^'{<=-/)!&~}> ")
     FORMAT_NUMBER = set('0#?.,%')
     FORMAT_PLACEHOLDER = set('#0?')
     DIGITS = set('0123456789')
@@ -595,9 +595,41 @@ def text(text_value, value_format):
     return TextFormat(value_format).format_value(text_value)
 
 
-# def textjoin(text):
-    # Excel reference: https://support.microsoft.com/en-us/office/
-    #   textjoin-function-357b449a-ec91-49d0-80c3-0e8fc845691c
+@excel_helper()
+def TEXTJOIN(delimiter, ignore_empty, *text_values):
+    """
+    Custom TEXTJOIN implementation to replace unsupported pycel TEXTJOIN function.
+    
+    Args:
+        delimiter: Text to use as delimiter
+        ignore_empty: Whether to ignore empty cells (TRUE/FALSE)
+        *text_values: Values to join
+    
+    Returns:
+        Joined text string
+    """
+    try:
+        result_parts = []
+        
+        for value in text_values:
+            # Handle nested tuples (ranges)
+            if isinstance(value, tuple):
+                for row in value:
+                    if isinstance(row, tuple):
+                        for cell in row:
+                            if cell is not None and (not ignore_empty or str(cell).strip()):
+                                result_parts.append(str(cell))
+                    else:
+                        if row is not None and (not ignore_empty or str(row).strip()):
+                            result_parts.append(str(row))
+            else:
+                if value is not None and (not ignore_empty or str(value).strip()):
+                    result_parts.append(str(value))
+        
+        return delimiter.join(result_parts)
+        
+    except Exception as e:
+        return ""
 
 
 @excel_helper(cse_params=0, str_params=0)
@@ -640,3 +672,12 @@ def value(text):
 
 # Older mappings for excel functions that match Python built-in and keywords
 x_len = len_
+
+
+# noinspection PyPep8
+__all__ = [
+    'choose', 'column', 'concatenate', 'concat', 'exact', 'find', 'hlookup',
+    'index', 'indirect', 'left', 'len_', 'lower', 'lookup', 'match', 'mid',
+    'offset', 'replace', 'right', 'row', 'substitute', 'text', 'trim', 'upper',
+    'value', 'vlookup', 'x_len', 'TEXTJOIN'
+]

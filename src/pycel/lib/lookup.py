@@ -501,11 +501,143 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
         return result_idx
 
 
-# def xlookup(value):
-    # Excel reference: https://support.microsoft.com/en-us/office/
-    #   xlookup-function-b7fd680e-6d10-43e6-84f9-88eae8bf5929
+@excel_helper()
+def XLOOKUP(lookup_value, lookup_array, return_array, if_not_found="#N/A"):
+    """
+    Custom XLOOKUP implementation to replace unsupported pycel XLOOKUP function.
+    
+    Args:
+        lookup_value: Value to search for
+        lookup_array: Array/range to search in
+        return_array: Array/range to return value from
+        if_not_found: Value to return if not found (default "#N/A")
+    
+    Returns:
+        Corresponding value from return_array or if_not_found
+    """
+    try:
+        # Handle tuple of tuples (range format from pycel)
+        if isinstance(lookup_array, tuple) and len(lookup_array) > 0:
+            # Flatten the lookup array
+            lookup_list = []
+            for row in lookup_array:
+                if isinstance(row, tuple):
+                    lookup_list.extend(row)
+                else:
+                    lookup_list.append(row)
+        else:
+            lookup_list = lookup_array
+            
+        if isinstance(return_array, tuple) and len(return_array) > 0:
+            # Flatten the return array
+            return_list = []
+            for row in return_array:
+                if isinstance(row, tuple):
+                    return_list.extend(row)
+                else:
+                    return_list.append(row)
+        else:
+            return_list = return_array
+        
+        # Find the lookup value
+        for i, val in enumerate(lookup_list):
+            if val == lookup_value:
+                if i < len(return_list):
+                    return return_list[i]
+                else:
+                    return if_not_found
+        
+        return if_not_found
+        
+    except Exception as e:
+        return if_not_found
+
+
+@excel_helper()
+def _XLWS_FILTER(array, criteria1, criteria2=None, if_empty=""):
+    """
+    Custom _XLWS_FILTER implementation to replace unsupported pycel FILTER function.
+    
+    Args:
+        array: Array to filter
+        criteria1: Filter criteria (boolean array) - 1=include, 0=exclude
+        criteria2: Second filter criteria (optional)
+        if_empty: Value to return if no matches
+    
+    Returns:
+        Filtered array or if_empty value
+    """
+    try:
+        # Handle tuple of tuples (range format from pycel)
+        if isinstance(array, tuple) and len(array) > 0:
+            # Flatten the array
+            array_list = []
+            for row in array:
+                if isinstance(row, tuple):
+                    array_list.extend(row)
+                else:
+                    array_list.append(row)
+        else:
+            array_list = list(array) if hasattr(array, '__iter__') else [array]
+        
+        # Handle criteria (boolean arrays)
+        if isinstance(criteria1, tuple) and len(criteria1) > 0:
+            criteria1_list = []
+            for row in criteria1:
+                if isinstance(row, tuple):
+                    criteria1_list.extend(row)
+                else:
+                    criteria1_list.append(row)
+        else:
+            criteria1_list = list(criteria1) if hasattr(criteria1, '__iter__') else [criteria1]
+        
+        if criteria2 is not None:
+            if isinstance(criteria2, tuple) and len(criteria2) > 0:
+                criteria2_list = []
+                for row in criteria2:
+                    if isinstance(row, tuple):
+                        criteria2_list.extend(row)
+                    else:
+                        criteria2_list.append(row)
+            else:
+                criteria2_list = list(criteria2) if hasattr(criteria2, '__iter__') else [criteria2]
+        else:
+            criteria2_list = None
+        
+        # Apply filters
+        filtered_results = []
+        for i, value in enumerate(array_list):
+            # Convert criteria to boolean (1 = True, 0 = False)
+            if i < len(criteria1_list):
+                criteria1_match = (criteria1_list[i] != 0)  # CRITICAL FIX: 1=True, 0=False
+            else:
+                criteria1_match = False
+                
+            if criteria2_list is not None:
+                if i < len(criteria2_list):
+                    criteria2_match = (criteria2_list[i] != 0)
+                else:
+                    criteria2_match = False
+                criteria_match = criteria1_match and criteria2_match
+            else:
+                criteria_match = criteria1_match
+                
+            if criteria_match:
+                # Skip header row - only include actual data
+                if i > 0:  # Skip header at index 0
+                    filtered_results.append(value)
+        
+        return filtered_results if filtered_results else if_empty
+        
+    except Exception as e:
+        return if_empty
 
 
 # def xmatch(value):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   xmatch-function-d966da31-7a6b-4a13-a1c6-5a33ed6a0312
+
+__all__ = [
+    'choose', 'column', 'hlookup', 'index', 'indirect', 'lookup', 'match',
+    'offset', 'row', 'vlookup', 'XLOOKUP', '_XLWS_FILTER'
+]
